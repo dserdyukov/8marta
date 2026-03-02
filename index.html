@@ -22,7 +22,7 @@
         }
         
         .game-container {
-            max-width: 1400px;
+            max-width: 1200px;
             width: 100%;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
@@ -102,6 +102,13 @@
             transform: translateY(0);
         }
         
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 5px 15px -5px rgba(102, 126, 234, 0.3);
+        }
+        
         .stats {
             display: flex;
             gap: 20px;
@@ -131,6 +138,10 @@
             gap: 15px;
             margin: 30px 0;
             padding: 10px;
+        }
+        
+        .board.hidden {
+            display: none;
         }
         
         .card {
@@ -263,16 +274,23 @@
             width: 50px;
         }
         
-        .footer-note {
-            text-align: center;
-            margin-top: 20px;
-            color: #666;
-            font-size: 0.9rem;
+        .leaderboard.highlight {
+            animation: glow 2s ease-in-out infinite;
+            border: 3px solid gold;
+        }
+        
+        @keyframes glow {
+            0%, 100% {
+                box-shadow: 0 0 20px gold;
+            }
+            50% {
+                box-shadow: 0 0 40px gold;
+            }
         }
         
         .victory-message {
             text-align: center;
-            padding: 40px;
+            padding: 30px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 30px;
             color: white;
@@ -281,16 +299,33 @@
         }
         
         .victory-message h2 {
-            font-size: 3rem;
-            margin-bottom: 20px;
+            font-size: 2.5rem;
+            margin-bottom: 15px;
         }
         
         .victory-message p {
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             opacity: 0.9;
         }
         
-        /* Модальное окно */
+        .winner-name {
+            font-size: 2rem;
+            font-weight: bold;
+            background: gold;
+            color: #764ba2;
+            padding: 10px 30px;
+            border-radius: 50px;
+            display: inline-block;
+            margin: 15px 0;
+        }
+        
+        .footer-note {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -384,6 +419,14 @@
             margin-bottom: 15px;
         }
         
+        .error-message {
+            color: #ff4e4e;
+            font-size: 1rem;
+            margin-top: -15px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
@@ -402,7 +445,7 @@
         
         @media (max-width: 768px) {
             .board {
-                grid-template-columns: repeat(3, 1fr);
+                grid-template-columns: repeat(4, 1fr);
                 gap: 10px;
             }
             
@@ -447,13 +490,13 @@
             </div>
             <div class="stats">
                 <div class="stat-box timer" id="timerDisplay">⏱️ 0.0с</div>
-                <div class="stat-box pairs" id="pairsDisplay">✅ 0/51</div>
+                <div class="stat-box pairs" id="pairsDisplay">✅ 0/17</div>
             </div>
         </div>
         
         <div class="board" id="board"></div>
         
-        <div class="leaderboard">
+        <div class="leaderboard" id="leaderboard">
             <h3>Таблица лидеров</h3>
             <table>
                 <thead>
@@ -471,7 +514,7 @@
         </div>
         
         <div class="footer-note">
-            ✨ Каждая фотография повторяется 6 раз. Найди всех коллег!
+            ✨ Найди всех коллег! Каждая фотография встречается 2 раза.
         </div>
     </div>
 
@@ -504,7 +547,7 @@
             'images/17.jpeg'
         ];
         
-        const COPIES_PER_IMAGE = 6;
+        const COPIES_PER_IMAGE = 2; // ТЕПЕРЬ ПО 2 КОПИИ!
         const TOTAL_CARDS = photoPaths.length * COPIES_PER_IMAGE;
         const TOTAL_PAIRS = TOTAL_CARDS / 2;
         // =======================================
@@ -519,6 +562,7 @@
         let timerValue = 0;
         let timerStarted = false;
         let gameFinished = false;
+        let existingNames = []; // Список имён, которые уже есть в таблице
         
         // DOM элементы
         const nameInput = document.getElementById('playerName');
@@ -527,14 +571,26 @@
         const pairsDisplay = document.getElementById('pairsDisplay');
         const startNewGameBtn = document.getElementById('startNewGame');
         const leaderboardBody = document.getElementById('leaderboardBody');
+        const leaderboardEl = document.getElementById('leaderboard');
         
         // Устанавливаем имя из localStorage
         nameInput.value = playerName;
         pairsDisplay.textContent = `✅ 0/${TOTAL_PAIRS}`;
         
+        // ========== ЗАГРУЗКА СУЩЕСТВУЮЩИХ ИМЁН ==========
+        async function loadExistingNames() {
+            try {
+                const snapshot = await db.collection('scores').get();
+                existingNames = snapshot.docs.map(doc => doc.data().name);
+                console.log('Существующие имена:', existingNames);
+            } catch (error) {
+                console.error('Ошибка загрузки имён:', error);
+                existingNames = [];
+            }
+        }
+        
         // ========== ПРИВЕТСТВЕННОЕ МОДАЛЬНОЕ ОКНО ==========
         function showWelcomeModal() {
-            // Проверяем, было ли уже показано окно (в этой сессии)
             if (sessionStorage.getItem('welcomeShown')) return;
             
             const modal = document.createElement('div');
@@ -546,30 +602,40 @@
                     <h1>С 8 МАРТА!</h1>
                     <p>Привет! Ты участвуешь в праздничной викторине!<br>Найди всех своих коллег и стань в этом первой!</p>
                     <input type="text" id="welcomeName" placeholder="Введите ваше имя" maxlength="30" value="${playerName}">
+                    <div id="nameError" class="error-message"></div>
                     <button class="btn" id="welcomeStart">Начать игру 🌸</button>
                 </div>
             `;
             
             document.body.appendChild(modal);
             
-            // Устанавливаем фокус на поле ввода
             setTimeout(() => {
                 document.getElementById('welcomeName').focus();
             }, 100);
             
-            // Обработчик кнопки "Начать игру"
-            document.getElementById('welcomeStart').addEventListener('click', () => {
+            document.getElementById('welcomeStart').addEventListener('click', async () => {
                 const welcomeName = document.getElementById('welcomeName').value.trim();
-                if (welcomeName) {
-                    playerName = welcomeName;
-                    nameInput.value = welcomeName;
-                    localStorage.setItem('memoryPlayerName', welcomeName);
+                const errorDiv = document.getElementById('nameError');
+                
+                if (!welcomeName) {
+                    errorDiv.textContent = 'Пожалуйста, введите имя';
+                    return;
                 }
+                
+                // Проверка на уникальность имени
+                if (existingNames.includes(welcomeName)) {
+                    errorDiv.textContent = 'Это имя уже использовано! Выберите другое.';
+                    return;
+                }
+                
+                playerName = welcomeName;
+                nameInput.value = welcomeName;
+                localStorage.setItem('memoryPlayerName', welcomeName);
                 modal.remove();
                 sessionStorage.setItem('welcomeShown', 'true');
+                initGame();
             });
             
-            // Обработчик Enter в поле ввода
             document.getElementById('welcomeName').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     document.getElementById('welcomeStart').click();
@@ -601,6 +667,10 @@
             matchedPairs = 0;
             lockBoard = false;
             gameFinished = false;
+            
+            // Показываем игровое поле
+            boardEl.classList.remove('hidden');
+            leaderboardEl.classList.remove('highlight');
             
             pairsDisplay.textContent = `✅ 0/${TOTAL_PAIRS}`;
             
@@ -693,7 +763,6 @@
                         gameFinished = true;
                         stopTimer();
                         saveResult();
-                        showVictory();
                     }
                     
                     flippedCards = [];
@@ -719,6 +788,12 @@
             const time = Math.round(timerValue * 10) / 10;
             
             try {
+                // Проверяем, нет ли уже такого имени (на всякий случай)
+                if (existingNames.includes(playerName)) {
+                    alert('Это имя уже использовано! Результат не сохранён.');
+                    return;
+                }
+                
                 await db.collection('scores').add({
                     name: playerName,
                     time: time,
@@ -726,11 +801,42 @@
                     copiesPerImage: COPIES_PER_IMAGE,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                loadLeaderboard();
+                
+                // Добавляем имя в список существующих
+                existingNames.push(playerName);
+                
+                // Загружаем обновлённую таблицу
+                await loadLeaderboard();
+                
+                // Скрываем игровое поле и показываем таблицу
+                boardEl.classList.add('hidden');
+                leaderboardEl.classList.add('highlight');
+                
+                // Показываем сообщение о победе
+                showVictoryMessage();
+                
             } catch (error) {
                 console.error('Ошибка сохранения:', error);
                 alert('Не удалось сохранить результат. Проверьте подключение к интернету.');
             }
+        }
+        
+        function showVictoryMessage() {
+            const victoryDiv = document.createElement('div');
+            victoryDiv.className = 'victory-message';
+            victoryDiv.innerHTML = `
+                <h2>🎉 ПОБЕДА! 🎉</h2>
+                <div class="winner-name">${playerName}</div>
+                <p>⏱️ Ваше время: ${timerValue.toFixed(1)} секунд</p>
+                <p>✨ Результат сохранён в таблице лидеров</p>
+                <p>👉 Посмотрите, какое у вас место!</p>
+            `;
+            
+            // Вставляем перед таблицей
+            leaderboardEl.insertAdjacentElement('beforebegin', victoryDiv);
+            
+            // Удаляем через 7 секунд
+            setTimeout(() => victoryDiv.remove(), 7000);
         }
         
         // ========== ЗАГРУЗКА ТАБЛИЦЫ ЛИДЕРОВ ==========
@@ -757,8 +863,11 @@
                         minute: '2-digit'
                     }) || 'неизвестно';
                     
+                    // Подсвечиваем строку текущего игрока
+                    const isCurrentPlayer = (data.name === playerName);
+                    
                     html += `
-                        <tr>
+                        <tr ${isCurrentPlayer ? 'style="background: #fff3bf; font-weight: bold;"' : ''}>
                             <td class="position">${position}</td>
                             <td>${escapeHtml(data.name)}</td>
                             <td><strong>${data.time}с</strong></td>
@@ -780,33 +889,38 @@
             return div.innerHTML;
         }
         
-        function showVictory() {
-            const name = playerName || 'Игрок';
-            const victoryDiv = document.createElement('div');
-            victoryDiv.className = 'victory-message';
-            victoryDiv.innerHTML = `
-                <h2>🎉 ПОБЕДА! 🎉</h2>
-                <p>${name}, вы нашли все пары!</p>
-                <p>⏱️ Время: ${timerValue.toFixed(1)} секунд</p>
-                <p>✨ Результат сохранён в таблице лидеров</p>
-            `;
-            
-            boardEl.insertAdjacentElement('afterend', victoryDiv);
-            
-            setTimeout(() => victoryDiv.remove(), 5000);
-        }
-        
         // ========== СОХРАНЕНИЕ ИМЕНИ ==========
         nameInput.addEventListener('change', () => {
-            playerName = nameInput.value.trim() || 'Игрок';
-            localStorage.setItem('memoryPlayerName', playerName);
+            const newName = nameInput.value.trim();
+            if (newName && !existingNames.includes(newName)) {
+                playerName = newName;
+                localStorage.setItem('memoryPlayerName', playerName);
+            } else if (existingNames.includes(newName)) {
+                alert('Это имя уже использовано! Выберите другое.');
+                nameInput.value = playerName;
+            }
         });
         
         // ========== НОВАЯ ИГРА ==========
-        startNewGameBtn.addEventListener('click', () => {
-            playerName = nameInput.value.trim() || 'Игрок';
+        startNewGameBtn.addEventListener('click', async () => {
+            const newName = nameInput.value.trim();
+            
+            // Проверка имени
+            if (!newName) {
+                alert('Пожалуйста, введите имя');
+                return;
+            }
+            
+            if (existingNames.includes(newName)) {
+                alert('Это имя уже использовано! Выберите другое.');
+                nameInput.value = playerName;
+                return;
+            }
+            
+            playerName = newName;
             localStorage.setItem('memoryPlayerName', playerName);
             
+            // Убираем сообщение о победе, если есть
             const victoryMsg = document.querySelector('.victory-message');
             if (victoryMsg) victoryMsg.remove();
             
@@ -814,11 +928,9 @@
         });
         
         // ========== ЗАПУСК ==========
-        window.addEventListener('load', () => {
-            initGame();
-            loadLeaderboard();
-            
-            // Показываем приветственное окно
+        window.addEventListener('load', async () => {
+            await loadExistingNames();
+            await loadLeaderboard();
             showWelcomeModal();
         });
     </script>
