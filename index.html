@@ -562,7 +562,7 @@
         let timerValue = 0;
         let timerStarted = false;
         let gameFinished = false;
-        let existingNames = []; // Список имён, которые уже есть в таблице
+        let existingNames = []; // Список имён, которые уже есть в таблице (в нижнем регистре)
         
         // DOM элементы
         const nameInput = document.getElementById('playerName');
@@ -576,6 +576,19 @@
         // Устанавливаем имя из localStorage
         nameInput.value = playerName;
         pairsDisplay.textContent = `✅ 0/${TOTAL_PAIRS}`;
+        
+        // ========== ФУНКЦИЯ НОРМАЛИЗАЦИИ ИМЕНИ ==========
+        function normalizeName(name) {
+            return name.trim().toLowerCase();
+        }
+        
+        // ========== ПРОВЕРКА УНИКАЛЬНОСТИ ИМЕНИ ==========
+        function isNameUnique(name) {
+            const normalizedNewName = normalizeName(name);
+            return !existingNames.some(existingName => 
+                normalizeName(existingName) === normalizedNewName
+            );
+        }
         
         // ========== ЗАГРУЗКА СУЩЕСТВУЮЩИХ ИМЁН ==========
         async function loadExistingNames() {
@@ -622,8 +635,8 @@
                     return;
                 }
                 
-                // Проверка на уникальность имени
-                if (existingNames.includes(welcomeName)) {
+                // Проверка на уникальность имени (без учёта регистра)
+                if (!isNameUnique(welcomeName)) {
                     errorDiv.textContent = 'Это имя уже использовано! Выберите другое.';
                     return;
                 }
@@ -788,8 +801,8 @@
             const time = Math.round(timerValue * 10) / 10;
             
             try {
-                // Проверяем, нет ли уже такого имени (на всякий случай)
-                if (existingNames.includes(playerName)) {
+                // Двойная проверка на уникальность имени (без учёта регистра)
+                if (!isNameUnique(playerName)) {
                     alert('Это имя уже использовано! Результат не сохранён.');
                     return;
                 }
@@ -863,8 +876,8 @@
                         minute: '2-digit'
                     }) || 'неизвестно';
                     
-                    // Подсвечиваем строку текущего игрока
-                    const isCurrentPlayer = (data.name === playerName);
+                    // Подсвечиваем строку текущего игрока (сравниваем без учёта регистра)
+                    const isCurrentPlayer = (normalizeName(data.name) === normalizeName(playerName));
                     
                     html += `
                         <tr ${isCurrentPlayer ? 'style="background: #fff3bf; font-weight: bold;"' : ''}>
@@ -892,10 +905,10 @@
         // ========== СОХРАНЕНИЕ ИМЕНИ ==========
         nameInput.addEventListener('change', () => {
             const newName = nameInput.value.trim();
-            if (newName && !existingNames.includes(newName)) {
+            if (newName && isNameUnique(newName)) {
                 playerName = newName;
                 localStorage.setItem('memoryPlayerName', playerName);
-            } else if (existingNames.includes(newName)) {
+            } else if (!isNameUnique(newName)) {
                 alert('Это имя уже использовано! Выберите другое.');
                 nameInput.value = playerName;
             }
@@ -911,7 +924,7 @@
                 return;
             }
             
-            if (existingNames.includes(newName)) {
+            if (!isNameUnique(newName)) {
                 alert('Это имя уже использовано! Выберите другое.');
                 nameInput.value = playerName;
                 return;
