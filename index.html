@@ -290,12 +290,113 @@
             opacity: 0.9;
         }
         
-        @keyframes pulse {
-            0%, 100% {
-                transform: scale(1);
+        /* Модальное окно */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            animation: fadeIn 0.5s;
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, #ffd1d1 0%, #ffe3e3 100%);
+            max-width: 500px;
+            width: 90%;
+            padding: 40px;
+            border-radius: 60px;
+            text-align: center;
+            box-shadow: 0 30px 50px rgba(0, 0, 0, 0.5);
+            border: 5px solid white;
+            position: relative;
+            animation: slideUp 0.5s;
+        }
+        
+        .modal-content h1 {
+            font-size: 2.8rem;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #ff4e4e 0%, #ff9a9a 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .modal-content p {
+            font-size: 1.4rem;
+            margin-bottom: 30px;
+            color: #444;
+            line-height: 1.6;
+        }
+        
+        .modal-content input {
+            width: 100%;
+            padding: 18px 25px;
+            font-size: 1.2rem;
+            border: 4px solid #ff9a9a;
+            border-radius: 50px;
+            margin-bottom: 25px;
+            outline: none;
+            text-align: center;
+            background: white;
+        }
+        
+        .modal-content input:focus {
+            border-color: #ff4e4e;
+            box-shadow: 0 0 0 3px rgba(255, 78, 78, 0.3);
+        }
+        
+        .modal-content .btn {
+            background: linear-gradient(135deg, #ff4e4e 0%, #ff9a9a 100%);
+            padding: 18px 40px;
+            font-size: 1.3rem;
+            width: 100%;
+            border: 2px solid white;
+        }
+        
+        .modal-content .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px -5px rgba(255, 78, 78, 0.6);
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 25px;
+            font-size: 2rem;
+            cursor: pointer;
+            color: #999;
+            transition: color 0.3s;
+        }
+        
+        .modal-close:hover {
+            color: #ff4e4e;
+        }
+        
+        .emoji-decoration {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
             }
-            50% {
-                transform: scale(1.02);
+            to {
+                transform: translateY(0);
+                opacity: 1;
             }
         }
         
@@ -316,6 +417,18 @@
             
             .stats {
                 justify-content: center;
+            }
+            
+            .modal-content {
+                padding: 30px 20px;
+            }
+            
+            .modal-content h1 {
+                font-size: 2rem;
+            }
+            
+            .modal-content p {
+                font-size: 1.2rem;
             }
         }
     </style>
@@ -367,7 +480,7 @@
     <script src="https://www.gstatic.com/firebasejs/9.22.2/firebase-firestore-compat.js"></script>
 
     <script>
-        // ========== НАСТРОЙКИ FIREBASE (УЖЕ ВСТАВЛЕНЫ ВАШИ) ==========
+        // ========== НАСТРОЙКИ FIREBASE ==========
         const firebaseConfig = {
             apiKey: "AIzaSyADjAXQh3yb3Gxndg7nwVPS_jtRN8U_QsI",
             authDomain: "memory-game-colleagues.firebaseapp.com",
@@ -380,18 +493,18 @@
         // Инициализация Firebase
         firebase.initializeApp(firebaseConfig);
         const db = firebase.firestore();
-        // ============================================================
+        // ========================================
         
-        // ========== ЖЁСТКИЕ НАСТРОЙКИ ==========
+        // ========== НАСТРОЙКИ ИГРЫ ==========
         const photoPaths = [
-            '1.jpeg', '2.jpeg', '3.jpeg', '4.jpeg',
-            '5.jpeg', '6.jpeg', '7.jpeg', 'images/8.jpeg',
-            '9.jpeg', '10.jpeg', '11.jpeg', '12.jpeg',
-            '13.jpeg', '14.jpeg', '15.jpeg', '16.jpeg',
-            '17.jpeg'
+            'images/1.jpeg', 'images/2.jpeg', 'images/3.jpeg', 'images/4.jpeg',
+            'images/5.jpeg', 'images/6.jpeg', 'images/7.jpeg', 'images/8.jpeg',
+            'images/9.jpeg', 'images/10.jpeg', 'images/11.jpeg', 'images/12.jpeg',
+            'images/13.jpeg', 'images/14.jpeg', 'images/15.jpeg', 'images/16.jpeg',
+            'images/17.jpeg'
         ];
         
-        const COPIES_PER_IMAGE = 6; // Жёстко задано 6 копий
+        const COPIES_PER_IMAGE = 6;
         const TOTAL_CARDS = photoPaths.length * COPIES_PER_IMAGE;
         const TOTAL_PAIRS = TOTAL_CARDS / 2;
         // =======================================
@@ -418,6 +531,51 @@
         // Устанавливаем имя из localStorage
         nameInput.value = playerName;
         pairsDisplay.textContent = `✅ 0/${TOTAL_PAIRS}`;
+        
+        // ========== ПРИВЕТСТВЕННОЕ МОДАЛЬНОЕ ОКНО ==========
+        function showWelcomeModal() {
+            // Проверяем, было ли уже показано окно (в этой сессии)
+            if (sessionStorage.getItem('welcomeShown')) return;
+            
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <span class="modal-close" onclick="this.parentElement.parentElement.remove()">&times;</span>
+                    <div class="emoji-decoration">🎉🌸🎊</div>
+                    <h1>С 8 МАРТА!</h1>
+                    <p>Привет! Ты участвуешь в праздничной викторине!<br>Найди всех своих коллег и стань в этом первой!</p>
+                    <input type="text" id="welcomeName" placeholder="Введите ваше имя" maxlength="30" value="${playerName}">
+                    <button class="btn" id="welcomeStart">Начать игру 🌸</button>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            // Устанавливаем фокус на поле ввода
+            setTimeout(() => {
+                document.getElementById('welcomeName').focus();
+            }, 100);
+            
+            // Обработчик кнопки "Начать игру"
+            document.getElementById('welcomeStart').addEventListener('click', () => {
+                const welcomeName = document.getElementById('welcomeName').value.trim();
+                if (welcomeName) {
+                    playerName = welcomeName;
+                    nameInput.value = welcomeName;
+                    localStorage.setItem('memoryPlayerName', welcomeName);
+                }
+                modal.remove();
+                sessionStorage.setItem('welcomeShown', 'true');
+            });
+            
+            // Обработчик Enter в поле ввода
+            document.getElementById('welcomeName').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('welcomeStart').click();
+                }
+            });
+        }
         
         // ========== СОЗДАНИЕ КОЛОДЫ ==========
         function createDeck() {
@@ -659,6 +817,9 @@
         window.addEventListener('load', () => {
             initGame();
             loadLeaderboard();
+            
+            // Показываем приветственное окно
+            showWelcomeModal();
         });
     </script>
 </body>
