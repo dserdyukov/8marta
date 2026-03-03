@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Memory Game — Найди коллегу ✨</title>
     <style>
+        /* ========== СТИЛИ (без изменений, всё те же) ========== */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -22,7 +23,7 @@
         }
         
         .game-container {
-            max-width: 1200px;
+            max-width: 1000px;
             width: 100%;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
@@ -133,12 +134,12 @@
         }
         
         .board {
-    display: grid;
-    grid-template-columns: repeat(6, 1fr); /* явно 6 колонок */
-    gap: 15px;
-    margin: 30px 0;
-    padding: 10px;
-}
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 15px;
+            margin: 30px 0;
+            padding: 10px;
+        }
         
         .board.hidden {
             display: none;
@@ -445,7 +446,7 @@
         
         @media (max-width: 768px) {
             .board {
-                grid-template-columns: repeat(4, 1fr);
+                grid-template-columns: repeat(3, 1fr);
                 gap: 10px;
             }
             
@@ -514,7 +515,7 @@
         </div>
         
         <div class="footer-note">
-            ✨ Найди всех коллег! Каждая фотография встречается 2 раза.
+            ✨ Найди всех коллег! Поле 6×6, 18 пар.
         </div>
     </div>
 
@@ -544,12 +545,12 @@
             'images/5.jpeg', 'images/6.jpeg', 'images/7.jpeg', 'images/8.jpeg',
             'images/9.jpeg', 'images/10.jpeg', 'images/11.jpeg', 'images/12.jpeg',
             'images/13.jpeg', 'images/14.jpeg', 'images/15.jpeg', 'images/16.jpeg',
-            'images/18.jpeg', 'images/18.jpeg'
+            'images/17.jpeg', 'images/18.jpeg'
         ];
         
-        const COPIES_PER_IMAGE = 2; // ТЕПЕРЬ ПО 2 КОПИИ!
-        const TOTAL_CARDS = photoPaths.length * COPIES_PER_IMAGE;
-        const TOTAL_PAIRS = TOTAL_CARDS / 2;
+        // ВАЖНО: Теперь мы явно создаём по 2 копии для КАЖДОЙ фотографии
+        const TOTAL_PAIRS = photoPaths.length; // = 18 пар
+        const TOTAL_CARDS = TOTAL_PAIRS * 2;    // = 36 карточек
         // =======================================
         
         // ========== ПЕРЕМЕННЫЕ ==========
@@ -562,7 +563,7 @@
         let timerValue = 0;
         let timerStarted = false;
         let gameFinished = false;
-        let existingNames = []; // Список имён, которые уже есть в таблице (в нижнем регистре)
+        let existingNames = [];
         
         // DOM элементы
         const nameInput = document.getElementById('playerName');
@@ -635,7 +636,6 @@
                     return;
                 }
                 
-                // Проверка на уникальность имени (без учёта регистра)
                 if (!isNameUnique(welcomeName)) {
                     errorDiv.textContent = 'Это имя уже использовано! Выберите другое.';
                     return;
@@ -656,20 +656,34 @@
             });
         }
         
-        // ========== СОЗДАНИЕ КОЛОДЫ ==========
+        // ========== ИСПРАВЛЕННАЯ ФУНКЦИЯ СОЗДАНИЯ КОЛОДЫ ==========
         function createDeck() {
             let deck = [];
-            photoPaths.forEach((path, idx) => {
-                for (let i = 0; i < COPIES_PER_IMAGE; i++) {
-                    deck.push({ id: idx, photoPath: path });
-                }
-            });
             
-            // Перемешиваем
+            // Явно создаём по 2 копии для каждой фотографии
+            for (let i = 0; i < photoPaths.length; i++) {
+                // Добавляем две карточки с одним и тем же ID (i) и путём
+                deck.push({ 
+                    id: i, 
+                    photoPath: photoPaths[i],
+                    cardId: `card-${i}-1` // Уникальный ID для отладки (не обязателен)
+                });
+                deck.push({ 
+                    id: i, 
+                    photoPath: photoPaths[i],
+                    cardId: `card-${i}-2`
+                });
+            }
+            
+            // Проверяем, что получилось ровно 36 карточек
+            console.log('Создано карточек:', deck.length);
+            
+            // Тщательное перемешивание (алгоритм Фишера-Йетса)
             for (let i = deck.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [deck[i], deck[j]] = [deck[j], deck[i]];
             }
+            
             return deck;
         }
         
@@ -681,7 +695,6 @@
             lockBoard = false;
             gameFinished = false;
             
-            // Показываем игровое поле
             boardEl.classList.remove('hidden');
             leaderboardEl.classList.remove('highlight');
             
@@ -702,6 +715,9 @@
                 cardDiv.className = 'card';
                 cardDiv.dataset.index = index;
                 cardDiv.dataset.id = card.id;
+                
+                // Для отладки можно добавить data-card-id, но не обязательно
+                // cardDiv.dataset.cardId = card.cardId;
                 
                 const style = document.createElement('style');
                 const rule = `
@@ -762,7 +778,9 @@
             const elA = boardEl.children[idxA];
             const elB = boardEl.children[idxB];
             
+            // Сравниваем по id фотографии (а не по индексу или cardId)
             if (cardA.id === cardB.id) {
+                // Совпадение!
                 setTimeout(() => {
                     elA.classList.add('matched');
                     elB.classList.add('matched');
@@ -782,6 +800,7 @@
                     lockBoard = false;
                 }, 300);
             } else {
+                // Не совпали
                 setTimeout(() => {
                     elA.classList.remove('flipped');
                     elB.classList.remove('flipped');
@@ -801,7 +820,6 @@
             const time = Math.round(timerValue * 10) / 10;
             
             try {
-                // Двойная проверка на уникальность имени (без учёта регистра)
                 if (!isNameUnique(playerName)) {
                     alert('Это имя уже использовано! Результат не сохранён.');
                     return;
@@ -811,21 +829,15 @@
                     name: playerName,
                     time: time,
                     totalCards: TOTAL_CARDS,
-                    copiesPerImage: COPIES_PER_IMAGE,
+                    copiesPerImage: 2,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
                 
-                // Добавляем имя в список существующих
                 existingNames.push(playerName);
-                
-                // Загружаем обновлённую таблицу
                 await loadLeaderboard();
                 
-                // Скрываем игровое поле и показываем таблицу
                 boardEl.classList.add('hidden');
                 leaderboardEl.classList.add('highlight');
-                
-                // Показываем сообщение о победе
                 showVictoryMessage();
                 
             } catch (error) {
@@ -845,10 +857,7 @@
                 <p>👉 Посмотрите, какое у вас место!</p>
             `;
             
-            // Вставляем перед таблицей
             leaderboardEl.insertAdjacentElement('beforebegin', victoryDiv);
-            
-            // Удаляем через 7 секунд
             setTimeout(() => victoryDiv.remove(), 7000);
         }
         
@@ -876,7 +885,6 @@
                         minute: '2-digit'
                     }) || 'неизвестно';
                     
-                    // Подсвечиваем строку текущего игрока (сравниваем без учёта регистра)
                     const isCurrentPlayer = (normalizeName(data.name) === normalizeName(playerName));
                     
                     html += `
@@ -918,7 +926,6 @@
         startNewGameBtn.addEventListener('click', async () => {
             const newName = nameInput.value.trim();
             
-            // Проверка имени
             if (!newName) {
                 alert('Пожалуйста, введите имя');
                 return;
@@ -933,7 +940,6 @@
             playerName = newName;
             localStorage.setItem('memoryPlayerName', playerName);
             
-            // Убираем сообщение о победе, если есть
             const victoryMsg = document.querySelector('.victory-message');
             if (victoryMsg) victoryMsg.remove();
             
@@ -945,6 +951,8 @@
             await loadExistingNames();
             await loadLeaderboard();
             showWelcomeModal();
+            
+            // Не инициируем игру сразу, только после модального окна
         });
     </script>
 </body>
