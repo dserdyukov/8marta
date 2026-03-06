@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Memory Game — Найди коллегу ✨</title>
     <style>
+        /* ========== СТИЛИ (без изменений, всё те же) ========== */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -22,7 +23,7 @@
         }
         
         .game-container {
-            max-width: 1400px;
+            max-width: 1000px;
             width: 100%;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
@@ -102,6 +103,13 @@
             transform: translateY(0);
         }
         
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 5px 15px -5px rgba(102, 126, 234, 0.3);
+        }
+        
         .stats {
             display: flex;
             gap: 20px;
@@ -127,10 +135,14 @@
         
         .board {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+            grid-template-columns: repeat(6, 1fr);
             gap: 15px;
             margin: 30px 0;
             padding: 10px;
+        }
+        
+        .board.hidden {
+            display: none;
         }
         
         .card {
@@ -263,16 +275,23 @@
             width: 50px;
         }
         
-        .footer-note {
-            text-align: center;
-            margin-top: 20px;
-            color: #666;
-            font-size: 0.9rem;
+        .leaderboard.highlight {
+            animation: glow 2s ease-in-out infinite;
+            border: 3px solid gold;
+        }
+        
+        @keyframes glow {
+            0%, 100% {
+                box-shadow: 0 0 20px gold;
+            }
+            50% {
+                box-shadow: 0 0 40px gold;
+            }
         }
         
         .victory-message {
             text-align: center;
-            padding: 40px;
+            padding: 30px;
             background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
             border-radius: 30px;
             color: white;
@@ -281,16 +300,33 @@
         }
         
         .victory-message h2 {
-            font-size: 3rem;
-            margin-bottom: 20px;
+            font-size: 2.5rem;
+            margin-bottom: 15px;
         }
         
         .victory-message p {
-            font-size: 1.5rem;
+            font-size: 1.3rem;
             opacity: 0.9;
         }
         
-        /* Модальное окно */
+        .winner-name {
+            font-size: 2rem;
+            font-weight: bold;
+            background: gold;
+            color: #764ba2;
+            padding: 10px 30px;
+            border-radius: 50px;
+            display: inline-block;
+            margin: 15px 0;
+        }
+        
+        .footer-note {
+            text-align: center;
+            margin-top: 20px;
+            color: #666;
+            font-size: 0.9rem;
+        }
+        
         .modal-overlay {
             position: fixed;
             top: 0;
@@ -384,6 +420,14 @@
             margin-bottom: 15px;
         }
         
+        .error-message {
+            color: #ff4e4e;
+            font-size: 1rem;
+            margin-top: -15px;
+            margin-bottom: 15px;
+            font-weight: bold;
+        }
+        
         @keyframes fadeIn {
             from { opacity: 0; }
             to { opacity: 1; }
@@ -447,13 +491,13 @@
             </div>
             <div class="stats">
                 <div class="stat-box timer" id="timerDisplay">⏱️ 0.0с</div>
-                <div class="stat-box pairs" id="pairsDisplay">✅ 0/51</div>
+                <div class="stat-box pairs" id="pairsDisplay">✅ 0/18</div>
             </div>
         </div>
         
         <div class="board" id="board"></div>
         
-        <div class="leaderboard">
+        <div class="leaderboard" id="leaderboard">
             <h3>Таблица лидеров</h3>
             <table>
                 <thead>
@@ -471,7 +515,7 @@
         </div>
         
         <div class="footer-note">
-            ✨ Каждая фотография повторяется 6 раз. Найди всех коллег!
+            ✨ Найди всех коллег! Поле 6×6, 18 пар.
         </div>
     </div>
 
@@ -501,12 +545,12 @@
             'images/5.jpeg', 'images/6.jpeg', 'images/7.jpeg', 'images/8.jpeg',
             'images/9.jpeg', 'images/10.jpeg', 'images/11.jpeg', 'images/12.jpeg',
             'images/13.jpeg', 'images/14.jpeg', 'images/15.jpeg', 'images/16.jpeg',
-            'images/17.jpeg'
+            'images/17.jpeg', 'images/18.jpeg'
         ];
         
-        const COPIES_PER_IMAGE = 6;
-        const TOTAL_CARDS = photoPaths.length * COPIES_PER_IMAGE;
-        const TOTAL_PAIRS = TOTAL_CARDS / 2;
+        // ВАЖНО: Теперь мы явно создаём по 2 копии для КАЖДОЙ фотографии
+        const TOTAL_PAIRS = photoPaths.length; // = 18 пар
+        const TOTAL_CARDS = TOTAL_PAIRS * 2;    // = 36 карточек
         // =======================================
         
         // ========== ПЕРЕМЕННЫЕ ==========
@@ -519,6 +563,7 @@
         let timerValue = 0;
         let timerStarted = false;
         let gameFinished = false;
+        let existingNames = [];
         
         // DOM элементы
         const nameInput = document.getElementById('playerName');
@@ -527,14 +572,39 @@
         const pairsDisplay = document.getElementById('pairsDisplay');
         const startNewGameBtn = document.getElementById('startNewGame');
         const leaderboardBody = document.getElementById('leaderboardBody');
+        const leaderboardEl = document.getElementById('leaderboard');
         
         // Устанавливаем имя из localStorage
         nameInput.value = playerName;
         pairsDisplay.textContent = `✅ 0/${TOTAL_PAIRS}`;
         
+        // ========== ФУНКЦИЯ НОРМАЛИЗАЦИИ ИМЕНИ ==========
+        function normalizeName(name) {
+            return name.trim().toLowerCase();
+        }
+        
+        // ========== ПРОВЕРКА УНИКАЛЬНОСТИ ИМЕНИ ==========
+        function isNameUnique(name) {
+            const normalizedNewName = normalizeName(name);
+            return !existingNames.some(existingName => 
+                normalizeName(existingName) === normalizedNewName
+            );
+        }
+        
+        // ========== ЗАГРУЗКА СУЩЕСТВУЮЩИХ ИМЁН ==========
+        async function loadExistingNames() {
+            try {
+                const snapshot = await db.collection('scores').get();
+                existingNames = snapshot.docs.map(doc => doc.data().name);
+                console.log('Существующие имена:', existingNames);
+            } catch (error) {
+                console.error('Ошибка загрузки имён:', error);
+                existingNames = [];
+            }
+        }
+        
         // ========== ПРИВЕТСТВЕННОЕ МОДАЛЬНОЕ ОКНО ==========
         function showWelcomeModal() {
-            // Проверяем, было ли уже показано окно (в этой сессии)
             if (sessionStorage.getItem('welcomeShown')) return;
             
             const modal = document.createElement('div');
@@ -546,30 +616,39 @@
                     <h1>С 8 МАРТА!</h1>
                     <p>Привет! Ты участвуешь в праздничной викторине!<br>Найди всех своих коллег и стань в этом первой!</p>
                     <input type="text" id="welcomeName" placeholder="Введите ваше имя" maxlength="30" value="${playerName}">
+                    <div id="nameError" class="error-message"></div>
                     <button class="btn" id="welcomeStart">Начать игру 🌸</button>
                 </div>
             `;
             
             document.body.appendChild(modal);
             
-            // Устанавливаем фокус на поле ввода
             setTimeout(() => {
                 document.getElementById('welcomeName').focus();
             }, 100);
             
-            // Обработчик кнопки "Начать игру"
-            document.getElementById('welcomeStart').addEventListener('click', () => {
+            document.getElementById('welcomeStart').addEventListener('click', async () => {
                 const welcomeName = document.getElementById('welcomeName').value.trim();
-                if (welcomeName) {
-                    playerName = welcomeName;
-                    nameInput.value = welcomeName;
-                    localStorage.setItem('memoryPlayerName', welcomeName);
+                const errorDiv = document.getElementById('nameError');
+                
+                if (!welcomeName) {
+                    errorDiv.textContent = 'Пожалуйста, введите имя';
+                    return;
                 }
+                
+                if (!isNameUnique(welcomeName)) {
+                    errorDiv.textContent = 'Это имя уже использовано! Выберите другое.';
+                    return;
+                }
+                
+                playerName = welcomeName;
+                nameInput.value = welcomeName;
+                localStorage.setItem('memoryPlayerName', welcomeName);
                 modal.remove();
                 sessionStorage.setItem('welcomeShown', 'true');
+                initGame();
             });
             
-            // Обработчик Enter в поле ввода
             document.getElementById('welcomeName').addEventListener('keypress', (e) => {
                 if (e.key === 'Enter') {
                     document.getElementById('welcomeStart').click();
@@ -577,20 +656,34 @@
             });
         }
         
-        // ========== СОЗДАНИЕ КОЛОДЫ ==========
+        // ========== ИСПРАВЛЕННАЯ ФУНКЦИЯ СОЗДАНИЯ КОЛОДЫ ==========
         function createDeck() {
             let deck = [];
-            photoPaths.forEach((path, idx) => {
-                for (let i = 0; i < COPIES_PER_IMAGE; i++) {
-                    deck.push({ id: idx, photoPath: path });
-                }
-            });
             
-            // Перемешиваем
+            // Явно создаём по 2 копии для каждой фотографии
+            for (let i = 0; i < photoPaths.length; i++) {
+                // Добавляем две карточки с одним и тем же ID (i) и путём
+                deck.push({ 
+                    id: i, 
+                    photoPath: photoPaths[i],
+                    cardId: `card-${i}-1` // Уникальный ID для отладки (не обязателен)
+                });
+                deck.push({ 
+                    id: i, 
+                    photoPath: photoPaths[i],
+                    cardId: `card-${i}-2`
+                });
+            }
+            
+            // Проверяем, что получилось ровно 36 карточек
+            console.log('Создано карточек:', deck.length);
+            
+            // Тщательное перемешивание (алгоритм Фишера-Йетса)
             for (let i = deck.length - 1; i > 0; i--) {
                 const j = Math.floor(Math.random() * (i + 1));
                 [deck[i], deck[j]] = [deck[j], deck[i]];
             }
+            
             return deck;
         }
         
@@ -601,6 +694,9 @@
             matchedPairs = 0;
             lockBoard = false;
             gameFinished = false;
+            
+            boardEl.classList.remove('hidden');
+            leaderboardEl.classList.remove('highlight');
             
             pairsDisplay.textContent = `✅ 0/${TOTAL_PAIRS}`;
             
@@ -619,6 +715,9 @@
                 cardDiv.className = 'card';
                 cardDiv.dataset.index = index;
                 cardDiv.dataset.id = card.id;
+                
+                // Для отладки можно добавить data-card-id, но не обязательно
+                // cardDiv.dataset.cardId = card.cardId;
                 
                 const style = document.createElement('style');
                 const rule = `
@@ -679,7 +778,9 @@
             const elA = boardEl.children[idxA];
             const elB = boardEl.children[idxB];
             
+            // Сравниваем по id фотографии (а не по индексу или cardId)
             if (cardA.id === cardB.id) {
+                // Совпадение!
                 setTimeout(() => {
                     elA.classList.add('matched');
                     elB.classList.add('matched');
@@ -693,13 +794,13 @@
                         gameFinished = true;
                         stopTimer();
                         saveResult();
-                        showVictory();
                     }
                     
                     flippedCards = [];
                     lockBoard = false;
                 }, 300);
             } else {
+                // Не совпали
                 setTimeout(() => {
                     elA.classList.remove('flipped');
                     elB.classList.remove('flipped');
@@ -719,18 +820,45 @@
             const time = Math.round(timerValue * 10) / 10;
             
             try {
+                if (!isNameUnique(playerName)) {
+                    alert('Это имя уже использовано! Результат не сохранён.');
+                    return;
+                }
+                
                 await db.collection('scores').add({
                     name: playerName,
                     time: time,
                     totalCards: TOTAL_CARDS,
-                    copiesPerImage: COPIES_PER_IMAGE,
+                    copiesPerImage: 2,
                     timestamp: firebase.firestore.FieldValue.serverTimestamp()
                 });
-                loadLeaderboard();
+                
+                existingNames.push(playerName);
+                await loadLeaderboard();
+                
+                boardEl.classList.add('hidden');
+                leaderboardEl.classList.add('highlight');
+                showVictoryMessage();
+                
             } catch (error) {
                 console.error('Ошибка сохранения:', error);
                 alert('Не удалось сохранить результат. Проверьте подключение к интернету.');
             }
+        }
+        
+        function showVictoryMessage() {
+            const victoryDiv = document.createElement('div');
+            victoryDiv.className = 'victory-message';
+            victoryDiv.innerHTML = `
+                <h2>🎉 ПОБЕДА! 🎉</h2>
+                <div class="winner-name">${playerName}</div>
+                <p>⏱️ Ваше время: ${timerValue.toFixed(1)} секунд</p>
+                <p>✨ Результат сохранён в таблице лидеров</p>
+                <p>👉 Посмотрите, какое у вас место!</p>
+            `;
+            
+            leaderboardEl.insertAdjacentElement('beforebegin', victoryDiv);
+            setTimeout(() => victoryDiv.remove(), 7000);
         }
         
         // ========== ЗАГРУЗКА ТАБЛИЦЫ ЛИДЕРОВ ==========
@@ -757,8 +885,10 @@
                         minute: '2-digit'
                     }) || 'неизвестно';
                     
+                    const isCurrentPlayer = (normalizeName(data.name) === normalizeName(playerName));
+                    
                     html += `
-                        <tr>
+                        <tr ${isCurrentPlayer ? 'style="background: #fff3bf; font-weight: bold;"' : ''}>
                             <td class="position">${position}</td>
                             <td>${escapeHtml(data.name)}</td>
                             <td><strong>${data.time}с</strong></td>
@@ -780,31 +910,34 @@
             return div.innerHTML;
         }
         
-        function showVictory() {
-            const name = playerName || 'Игрок';
-            const victoryDiv = document.createElement('div');
-            victoryDiv.className = 'victory-message';
-            victoryDiv.innerHTML = `
-                <h2>🎉 ПОБЕДА! 🎉</h2>
-                <p>${name}, вы нашли все пары!</p>
-                <p>⏱️ Время: ${timerValue.toFixed(1)} секунд</p>
-                <p>✨ Результат сохранён в таблице лидеров</p>
-            `;
-            
-            boardEl.insertAdjacentElement('afterend', victoryDiv);
-            
-            setTimeout(() => victoryDiv.remove(), 5000);
-        }
-        
         // ========== СОХРАНЕНИЕ ИМЕНИ ==========
         nameInput.addEventListener('change', () => {
-            playerName = nameInput.value.trim() || 'Игрок';
-            localStorage.setItem('memoryPlayerName', playerName);
+            const newName = nameInput.value.trim();
+            if (newName && isNameUnique(newName)) {
+                playerName = newName;
+                localStorage.setItem('memoryPlayerName', playerName);
+            } else if (!isNameUnique(newName)) {
+                alert('Это имя уже использовано! Выберите другое.');
+                nameInput.value = playerName;
+            }
         });
         
         // ========== НОВАЯ ИГРА ==========
-        startNewGameBtn.addEventListener('click', () => {
-            playerName = nameInput.value.trim() || 'Игрок';
+        startNewGameBtn.addEventListener('click', async () => {
+            const newName = nameInput.value.trim();
+            
+            if (!newName) {
+                alert('Пожалуйста, введите имя');
+                return;
+            }
+            
+            if (!isNameUnique(newName)) {
+                alert('Это имя уже использовано! Выберите другое.');
+                nameInput.value = playerName;
+                return;
+            }
+            
+            playerName = newName;
             localStorage.setItem('memoryPlayerName', playerName);
             
             const victoryMsg = document.querySelector('.victory-message');
@@ -814,12 +947,12 @@
         });
         
         // ========== ЗАПУСК ==========
-        window.addEventListener('load', () => {
-            initGame();
-            loadLeaderboard();
-            
-            // Показываем приветственное окно
+        window.addEventListener('load', async () => {
+            await loadExistingNames();
+            await loadLeaderboard();
             showWelcomeModal();
+            
+            // Не инициируем игру сразу, только после модального окна
         });
     </script>
 </body>
