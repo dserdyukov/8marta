@@ -3,8 +3,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Результаты викторины к 8 Марта ✨</title>
+    <title>Memory Game — Найди коллегу ✨</title>
     <style>
+        /* ========== СТИЛИ (без изменений, всё те же) ========== */
         * {
             box-sizing: border-box;
             margin: 0;
@@ -21,60 +22,221 @@
             padding: 20px;
         }
         
-        .container {
-            max-width: 900px;
+        .game-container {
+            max-width: 1000px;
             width: 100%;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(10px);
             border-radius: 40px;
             box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-            padding: 40px;
+            padding: 30px;
         }
         
-        .congrats {
-            text-align: center;
-            margin-bottom: 40px;
+        .header {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 30px;
+            padding: 0 10px;
         }
         
-        .congrats h1 {
-            font-size: 3.5rem;
-            margin-bottom: 15px;
-            background: linear-gradient(135deg, #ff4e4e 0%, #ff9a9a 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        .player-section {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
         }
         
-        .congrats p {
-            font-size: 1.5rem;
-            color: #444;
-            line-height: 1.6;
+        .player-input {
+            position: relative;
         }
         
-        .emoji-decoration {
-            font-size: 4rem;
-            margin-bottom: 20px;
+        .player-input input {
+            padding: 15px 25px;
+            font-size: 1.1rem;
+            border: 3px solid #e0e0e0;
+            border-radius: 50px;
+            outline: none;
+            width: 250px;
+            transition: all 0.3s;
+            background: white;
+        }
+        
+        .player-input input:focus {
+            border-color: #764ba2;
+            box-shadow: 0 0 0 3px rgba(118, 75, 162, 0.2);
+        }
+        
+        .player-input label {
+            position: absolute;
+            top: -10px;
+            left: 20px;
+            background: white;
+            padding: 0 10px;
+            font-size: 0.9rem;
+            color: #666;
+            font-weight: 600;
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 35px;
+            border-radius: 50px;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 10px 20px -5px rgba(102, 126, 234, 0.4);
+            border: 2px solid transparent;
+        }
+        
+        .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px -5px rgba(102, 126, 234, 0.6);
+        }
+        
+        .btn:active {
+            transform: translateY(0);
+        }
+        
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+            transform: none;
+            box-shadow: 0 5px 15px -5px rgba(102, 126, 234, 0.3);
+        }
+        
+        .stats {
+            display: flex;
+            gap: 20px;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .stat-box {
+            background: #f8f9fa;
+            padding: 12px 25px;
+            border-radius: 50px;
+            box-shadow: inset 0 2px 5px rgba(0,0,0,0.05);
+            border: 2px solid #e0e0e0;
+        }
+        
+        .timer {
+            color: #e74c3c;
+        }
+        
+        .pairs {
+            color: #27ae60;
+        }
+        
+        .board {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 15px;
+            margin: 30px 0;
+            padding: 10px;
+        }
+        
+        .board.hidden {
+            display: none;
+        }
+        
+        .card {
+            aspect-ratio: 1;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            transform-style: preserve-3d;
+            box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.3);
+        }
+        
+        .card::before {
+            content: "?";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            font-weight: bold;
+            color: white;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.2);
+            backface-visibility: hidden;
+            transform: rotateY(0deg);
+            transition: all 0.3s;
+            border: 4px solid white;
+            box-sizing: border-box;
+        }
+        
+        .card.flipped::before {
+            transform: rotateY(180deg);
+            opacity: 0;
+        }
+        
+        .card::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+            border-radius: 20px;
+            backface-visibility: hidden;
+            transform: rotateY(-180deg);
+            transition: all 0.3s;
+            border: 4px solid white;
+            box-shadow: inset 0 0 0 2px rgba(255,255,255,0.5);
+        }
+        
+        .card.flipped::after {
+            transform: rotateY(0deg);
+        }
+        
+        .card.matched {
+            opacity: 0;
+            transform: scale(0.8);
+            pointer-events: none;
+            transition: all 0.5s;
+        }
+        
+        .card.matched::before,
+        .card.matched::after {
+            opacity: 0;
         }
         
         .leaderboard {
             background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
             border-radius: 30px;
-            padding: 30px;
+            padding: 25px;
+            margin-top: 30px;
             border: 3px solid white;
         }
         
-        .leaderboard h2 {
-            font-size: 2rem;
+        .leaderboard h3 {
+            font-size: 1.8rem;
             color: #764ba2;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
             display: flex;
             align-items: center;
             gap: 10px;
         }
         
-        .leaderboard h2::before {
+        .leaderboard h3::before {
             content: "🏆";
-            font-size: 2.2rem;
+            font-size: 2rem;
         }
         
         .leaderboard table {
@@ -92,13 +254,11 @@
             padding: 15px;
             text-align: left;
             font-weight: 600;
-            font-size: 1.1rem;
         }
         
         .leaderboard td {
-            padding: 15px;
+            padding: 12px 15px;
             border-bottom: 1px solid #e0e0e0;
-            font-size: 1.1rem;
         }
         
         .leaderboard tr:last-child td {
@@ -112,81 +272,233 @@
         .leaderboard .position {
             font-weight: bold;
             color: #764ba2;
-            width: 60px;
+            width: 50px;
+        }
+        
+        .leaderboard.highlight {
+            animation: glow 2s ease-in-out infinite;
+            border: 3px solid gold;
+        }
+        
+        @keyframes glow {
+            0%, 100% {
+                box-shadow: 0 0 20px gold;
+            }
+            50% {
+                box-shadow: 0 0 40px gold;
+            }
+        }
+        
+        .victory-message {
             text-align: center;
+            padding: 30px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            border-radius: 30px;
+            color: white;
+            margin: 20px 0;
+            animation: pulse 2s infinite;
         }
         
-        .winner-row {
-            background: #fff3bf;
+        .victory-message h2 {
+            font-size: 2.5rem;
+            margin-bottom: 15px;
+        }
+        
+        .victory-message p {
+            font-size: 1.3rem;
+            opacity: 0.9;
+        }
+        
+        .winner-name {
+            font-size: 2rem;
             font-weight: bold;
-        }
-        
-        .winner-row td:first-child {
-            position: relative;
-        }
-        
-        .winner-row td:first-child::before {
-            content: "👑";
-            position: absolute;
-            left: -5px;
-            top: 50%;
-            transform: translateY(-50%);
-            font-size: 1.2rem;
+            background: gold;
+            color: #764ba2;
+            padding: 10px 30px;
+            border-radius: 50px;
+            display: inline-block;
+            margin: 15px 0;
         }
         
         .footer-note {
             text-align: center;
-            margin-top: 30px;
+            margin-top: 20px;
             color: #666;
+            font-size: 0.9rem;
+        }
+        
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.7);
+            backdrop-filter: blur(5px);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            animation: fadeIn 0.5s;
+        }
+        
+        .modal-content {
+            background: linear-gradient(135deg, #ffd1d1 0%, #ffe3e3 100%);
+            max-width: 500px;
+            width: 90%;
+            padding: 40px;
+            border-radius: 60px;
+            text-align: center;
+            box-shadow: 0 30px 50px rgba(0, 0, 0, 0.5);
+            border: 5px solid white;
+            position: relative;
+            animation: slideUp 0.5s;
+        }
+        
+        .modal-content h1 {
+            font-size: 2.8rem;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, #ff4e4e 0%, #ff9a9a 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .modal-content p {
+            font-size: 1.4rem;
+            margin-bottom: 30px;
+            color: #444;
+            line-height: 1.6;
+        }
+        
+        .modal-content input {
+            width: 100%;
+            padding: 18px 25px;
+            font-size: 1.2rem;
+            border: 4px solid #ff9a9a;
+            border-radius: 50px;
+            margin-bottom: 25px;
+            outline: none;
+            text-align: center;
+            background: white;
+        }
+        
+        .modal-content input:focus {
+            border-color: #ff4e4e;
+            box-shadow: 0 0 0 3px rgba(255, 78, 78, 0.3);
+        }
+        
+        .modal-content .btn {
+            background: linear-gradient(135deg, #ff4e4e 0%, #ff9a9a 100%);
+            padding: 18px 40px;
+            font-size: 1.3rem;
+            width: 100%;
+            border: 2px solid white;
+        }
+        
+        .modal-content .btn:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 15px 30px -5px rgba(255, 78, 78, 0.6);
+        }
+        
+        .modal-close {
+            position: absolute;
+            top: 20px;
+            right: 25px;
+            font-size: 2rem;
+            cursor: pointer;
+            color: #999;
+            transition: color 0.3s;
+        }
+        
+        .modal-close:hover {
+            color: #ff4e4e;
+        }
+        
+        .emoji-decoration {
+            font-size: 3rem;
+            margin-bottom: 15px;
+        }
+        
+        .error-message {
+            color: #ff4e4e;
             font-size: 1rem;
+            margin-top: -15px;
+            margin-bottom: 15px;
+            font-weight: bold;
         }
         
-        .footer-note a {
-            color: #764ba2;
-            text-decoration: none;
-            font-weight: 600;
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
         }
         
-        .footer-note a:hover {
-            text-decoration: underline;
+        @keyframes slideUp {
+            from {
+                transform: translateY(50px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
         }
         
         @media (max-width: 768px) {
-            .container {
-                padding: 20px;
+            .board {
+                grid-template-columns: repeat(3, 1fr);
+                gap: 10px;
             }
             
-            .congrats h1 {
-                font-size: 2.5rem;
+            .header {
+                flex-direction: column;
+                align-items: stretch;
             }
             
-            .congrats p {
+            .player-section {
+                justify-content: center;
+            }
+            
+            .stats {
+                justify-content: center;
+            }
+            
+            .modal-content {
+                padding: 30px 20px;
+            }
+            
+            .modal-content h1 {
+                font-size: 2rem;
+            }
+            
+            .modal-content p {
                 font-size: 1.2rem;
-            }
-            
-            .leaderboard h2 {
-                font-size: 1.6rem;
-            }
-            
-            .leaderboard th,
-            .leaderboard td {
-                padding: 10px;
-                font-size: 0.9rem;
             }
         }
     </style>
 </head>
 <body>
-    <div class="container">
-        <div class="congrats">
-            <div class="emoji-decoration">🌸🎉🌷🎊💐</div>
-            <h1>С 8 МАРТА!</h1>
-            <p>Дорогие девушки! Спасибо, что играли 💫</p>
-            <p>Вот итоговая таблица лидеров:</p>
+    <div class="game-container">
+        <div class="header">
+            <div class="player-section">
+                <div class="player-input">
+                    <label>👤 Игрок</label>
+                    <input type="text" id="playerName" placeholder="Введите ваше имя" maxlength="30">
+                </div>
+                <button class="btn" id="startNewGame">
+                    🎮 Новая игра
+                </button>
+            </div>
+            <div class="stats">
+                <div class="stat-box timer" id="timerDisplay">⏱️ 0.0с</div>
+                <div class="stat-box pairs" id="pairsDisplay">✅ 0/18</div>
+            </div>
         </div>
         
-        <div class="leaderboard">
-            <h2>Таблица лидеров</h2>
+        <div class="board" id="board"></div>
+        
+        <div class="leaderboard" id="leaderboard">
+            <h3>Таблица лидеров</h3>
             <table>
                 <thead>
                     <tr>
@@ -197,13 +509,13 @@
                     </tr>
                 </thead>
                 <tbody id="leaderboardBody">
-                    <tr><td colspan="4" style="text-align: center; padding: 30px;">Загрузка результатов...</td></tr>
+                    <tr><td colspan="4" style="text-align: center;">Загрузка...</td></tr>
                 </tbody>
             </table>
         </div>
         
         <div class="footer-note">
-            💖 С праздником весны! 💖
+            ✨ Найди всех коллег! Поле 6×6, 18 пар.
         </div>
     </div>
 
@@ -227,8 +539,327 @@
         const db = firebase.firestore();
         // ========================================
         
-        // DOM элемент
+        // ========== НАСТРОЙКИ ИГРЫ ==========
+        const photoPaths = [
+            'images/1.jpeg', 'images/2.jpeg', 'images/3.jpeg', 'images/4.jpeg',
+            'images/5.jpeg', 'images/6.jpeg', 'images/7.jpeg', 'images/8.jpeg',
+            'images/9.jpeg', 'images/10.jpeg', 'images/11.jpeg', 'images/12.jpeg',
+            'images/13.jpeg', 'images/14.jpeg', 'images/15.jpeg', 'images/16.jpeg',
+            'images/17.jpeg', 'images/18.jpeg'
+        ];
+        
+        // ВАЖНО: Теперь мы явно создаём по 2 копии для КАЖДОЙ фотографии
+        const TOTAL_PAIRS = photoPaths.length; // = 18 пар
+        const TOTAL_CARDS = TOTAL_PAIRS * 2;    // = 36 карточек
+        // =======================================
+        
+        // ========== ПЕРЕМЕННЫЕ ==========
+        let playerName = localStorage.getItem('memoryPlayerName') || '';
+        let cards = [];
+        let flippedCards = [];
+        let lockBoard = false;
+        let matchedPairs = 0;
+        let timerInterval = null;
+        let timerValue = 0;
+        let timerStarted = false;
+        let gameFinished = false;
+        let existingNames = [];
+        
+        // DOM элементы
+        const nameInput = document.getElementById('playerName');
+        const boardEl = document.getElementById('board');
+        const timerDisplay = document.getElementById('timerDisplay');
+        const pairsDisplay = document.getElementById('pairsDisplay');
+        const startNewGameBtn = document.getElementById('startNewGame');
         const leaderboardBody = document.getElementById('leaderboardBody');
+        const leaderboardEl = document.getElementById('leaderboard');
+        
+        // Устанавливаем имя из localStorage
+        nameInput.value = playerName;
+        pairsDisplay.textContent = `✅ 0/${TOTAL_PAIRS}`;
+        
+        // ========== ФУНКЦИЯ НОРМАЛИЗАЦИИ ИМЕНИ ==========
+        function normalizeName(name) {
+            return name.trim().toLowerCase();
+        }
+        
+        // ========== ПРОВЕРКА УНИКАЛЬНОСТИ ИМЕНИ ==========
+        function isNameUnique(name) {
+            const normalizedNewName = normalizeName(name);
+            return !existingNames.some(existingName => 
+                normalizeName(existingName) === normalizedNewName
+            );
+        }
+        
+        // ========== ЗАГРУЗКА СУЩЕСТВУЮЩИХ ИМЁН ==========
+        async function loadExistingNames() {
+            try {
+                const snapshot = await db.collection('scores').get();
+                existingNames = snapshot.docs.map(doc => doc.data().name);
+                console.log('Существующие имена:', existingNames);
+            } catch (error) {
+                console.error('Ошибка загрузки имён:', error);
+                existingNames = [];
+            }
+        }
+        
+        // ========== ПРИВЕТСТВЕННОЕ МОДАЛЬНОЕ ОКНО ==========
+        function showWelcomeModal() {
+            if (sessionStorage.getItem('welcomeShown')) return;
+            
+            const modal = document.createElement('div');
+            modal.className = 'modal-overlay';
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <span class="modal-close" onclick="this.parentElement.parentElement.remove()">&times;</span>
+                    <div class="emoji-decoration">🎉🌸🎊</div>
+                    <h1>С 8 МАРТА!</h1>
+                    <p>Привет! Ты участвуешь в праздничной викторине!<br>Найди всех своих коллег и стань в этом первой!</p>
+                    <input type="text" id="welcomeName" placeholder="Введите ваше имя" maxlength="30" value="${playerName}">
+                    <div id="nameError" class="error-message"></div>
+                    <button class="btn" id="welcomeStart">Начать игру 🌸</button>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            
+            setTimeout(() => {
+                document.getElementById('welcomeName').focus();
+            }, 100);
+            
+            document.getElementById('welcomeStart').addEventListener('click', async () => {
+                const welcomeName = document.getElementById('welcomeName').value.trim();
+                const errorDiv = document.getElementById('nameError');
+                
+                if (!welcomeName) {
+                    errorDiv.textContent = 'Пожалуйста, введите имя';
+                    return;
+                }
+                
+                if (!isNameUnique(welcomeName)) {
+                    errorDiv.textContent = 'Это имя уже использовано! Выберите другое.';
+                    return;
+                }
+                
+                playerName = welcomeName;
+                nameInput.value = welcomeName;
+                localStorage.setItem('memoryPlayerName', welcomeName);
+                modal.remove();
+                sessionStorage.setItem('welcomeShown', 'true');
+                initGame();
+            });
+            
+            document.getElementById('welcomeName').addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    document.getElementById('welcomeStart').click();
+                }
+            });
+        }
+        
+        // ========== ИСПРАВЛЕННАЯ ФУНКЦИЯ СОЗДАНИЯ КОЛОДЫ ==========
+        function createDeck() {
+            let deck = [];
+            
+            // Явно создаём по 2 копии для каждой фотографии
+            for (let i = 0; i < photoPaths.length; i++) {
+                // Добавляем две карточки с одним и тем же ID (i) и путём
+                deck.push({ 
+                    id: i, 
+                    photoPath: photoPaths[i],
+                    cardId: `card-${i}-1` // Уникальный ID для отладки (не обязателен)
+                });
+                deck.push({ 
+                    id: i, 
+                    photoPath: photoPaths[i],
+                    cardId: `card-${i}-2`
+                });
+            }
+            
+            // Проверяем, что получилось ровно 36 карточек
+            console.log('Создано карточек:', deck.length);
+            
+            // Тщательное перемешивание (алгоритм Фишера-Йетса)
+            for (let i = deck.length - 1; i > 0; i--) {
+                const j = Math.floor(Math.random() * (i + 1));
+                [deck[i], deck[j]] = [deck[j], deck[i]];
+            }
+            
+            return deck;
+        }
+        
+        // ========== ИНИЦИАЛИЗАЦИЯ ==========
+        function initGame() {
+            cards = createDeck();
+            flippedCards = [];
+            matchedPairs = 0;
+            lockBoard = false;
+            gameFinished = false;
+            
+            boardEl.classList.remove('hidden');
+            leaderboardEl.classList.remove('highlight');
+            
+            pairsDisplay.textContent = `✅ 0/${TOTAL_PAIRS}`;
+            
+            stopTimer();
+            timerValue = 0;
+            timerStarted = false;
+            timerDisplay.textContent = '⏱️ 0.0с';
+            
+            renderBoard();
+        }
+        
+        function renderBoard() {
+            boardEl.innerHTML = '';
+            cards.forEach((card, index) => {
+                const cardDiv = document.createElement('div');
+                cardDiv.className = 'card';
+                cardDiv.dataset.index = index;
+                cardDiv.dataset.id = card.id;
+                
+                // Для отладки можно добавить data-card-id, но не обязательно
+                // cardDiv.dataset.cardId = card.cardId;
+                
+                const style = document.createElement('style');
+                const rule = `
+                    .card[data-index="${index}"]::after {
+                        background-image: url('${card.photoPath}');
+                        background-size: cover;
+                    }
+                `;
+                style.textContent = rule;
+                document.head.appendChild(style);
+                
+                cardDiv.addEventListener('click', () => onCardClick(index));
+                boardEl.appendChild(cardDiv);
+            });
+        }
+        
+        // ========== ТАЙМЕР ==========
+        function startTimer() {
+            if (timerInterval) stopTimer();
+            timerStarted = true;
+            timerInterval = setInterval(() => {
+                timerValue += 0.1;
+                timerDisplay.textContent = `⏱️ ${timerValue.toFixed(1)}с`;
+            }, 100);
+        }
+        
+        function stopTimer() {
+            if (timerInterval) {
+                clearInterval(timerInterval);
+                timerInterval = null;
+            }
+        }
+        
+        // ========== КЛИК ПО КАРТОЧКЕ ==========
+        function onCardClick(index) {
+            if (lockBoard || gameFinished) return;
+            
+            const cardEl = boardEl.children[index];
+            if (cardEl.classList.contains('matched') || cardEl.classList.contains('flipped')) return;
+            
+            if (!timerStarted && !gameFinished) {
+                startTimer();
+            }
+            
+            cardEl.classList.add('flipped');
+            flippedCards.push(index);
+            
+            if (flippedCards.length === 2) {
+                checkMatch();
+            }
+        }
+        
+        function checkMatch() {
+            lockBoard = true;
+            const [idxA, idxB] = flippedCards;
+            const cardA = cards[idxA];
+            const cardB = cards[idxB];
+            const elA = boardEl.children[idxA];
+            const elB = boardEl.children[idxB];
+            
+            // Сравниваем по id фотографии (а не по индексу или cardId)
+            if (cardA.id === cardB.id) {
+                // Совпадение!
+                setTimeout(() => {
+                    elA.classList.add('matched');
+                    elB.classList.add('matched');
+                    elA.classList.remove('flipped');
+                    elB.classList.remove('flipped');
+                    
+                    matchedPairs++;
+                    pairsDisplay.textContent = `✅ ${matchedPairs}/${TOTAL_PAIRS}`;
+                    
+                    if (matchedPairs === TOTAL_PAIRS) {
+                        gameFinished = true;
+                        stopTimer();
+                        saveResult();
+                    }
+                    
+                    flippedCards = [];
+                    lockBoard = false;
+                }, 300);
+            } else {
+                // Не совпали
+                setTimeout(() => {
+                    elA.classList.remove('flipped');
+                    elB.classList.remove('flipped');
+                    flippedCards = [];
+                    lockBoard = false;
+                }, 700);
+            }
+        }
+        
+        // ========== СОХРАНЕНИЕ РЕЗУЛЬТАТА ==========
+        async function saveResult() {
+            if (!playerName) {
+                playerName = 'Аноним';
+                nameInput.value = playerName;
+            }
+            
+            const time = Math.round(timerValue * 10) / 10;
+            
+            try {
+                if (!isNameUnique(playerName)) {
+                    alert('Это имя уже использовано! Результат не сохранён.');
+                    return;
+                }
+                
+                await db.collection('scores').add({
+                    name: playerName,
+                    time: time,
+                    totalCards: TOTAL_CARDS,
+                    copiesPerImage: 2,
+                    timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                });
+                
+                existingNames.push(playerName);
+                await loadLeaderboard();
+                
+                boardEl.classList.add('hidden');
+                leaderboardEl.classList.add('highlight');
+                showVictoryMessage();
+                
+            } catch (error) {
+                console.error('Ошибка сохранения:', error);
+                alert('Не удалось сохранить результат. Проверьте подключение к интернету.');
+            }
+        }
+        
+        function showVictoryMessage() {
+            const victoryDiv = document.createElement('div');
+            victoryDiv.className = 'victory-message';
+            victoryDiv.innerHTML = `
+                <h2>🎉 ПОБЕДА! 🎉</h2>
+                <div class="winner-name">${playerName}</div>
+                <p>⏱️ Ваше время: ${timerValue.toFixed(1)} секунд</p>
+                <p>✨ Результат сохранён в таблице лидеров</p>
+                <p>👉 Посмотрите, какое у вас место!</p>
+            `;
+            
+            leaderboardEl.insertAdjacentElement('beforebegin', victoryDiv);
+            setTimeout(() => victoryDiv.remove(), 7000);
+        }
         
         // ========== ЗАГРУЗКА ТАБЛИЦЫ ЛИДЕРОВ ==========
         async function loadLeaderboard() {
@@ -239,7 +870,7 @@
                     .get();
                 
                 if (snapshot.empty) {
-                    leaderboardBody.innerHTML = '<tr><td colspan="4" style="text-align: center; padding: 30px;">Пока нет результатов</td></tr>';
+                    leaderboardBody.innerHTML = '<tr><td colspan="4" style="text-align: center;">Пока нет результатов</td></tr>';
                     return;
                 }
                 
@@ -254,13 +885,12 @@
                         minute: '2-digit'
                     }) || 'неизвестно';
                     
-                    // Первое место с короной
-                    const isWinner = position === 1;
+                    const isCurrentPlayer = (normalizeName(data.name) === normalizeName(playerName));
                     
                     html += `
-                        <tr ${isWinner ? 'class="winner-row"' : ''}>
+                        <tr ${isCurrentPlayer ? 'style="background: #fff3bf; font-weight: bold;"' : ''}>
                             <td class="position">${position}</td>
-                            <td>${escapeHtml(data.name)} ${isWinner ? '👑' : ''}</td>
+                            <td>${escapeHtml(data.name)}</td>
                             <td><strong>${data.time}с</strong></td>
                             <td>${date}</td>
                         </tr>
@@ -270,7 +900,7 @@
                 leaderboardBody.innerHTML = html;
             } catch (error) {
                 console.error('Ошибка загрузки:', error);
-                leaderboardBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: red; padding: 30px;">Ошибка загрузки результатов</td></tr>';
+                leaderboardBody.innerHTML = '<tr><td colspan="4" style="text-align: center; color: red;">Ошибка загрузки</td></tr>';
             }
         }
         
@@ -280,9 +910,49 @@
             return div.innerHTML;
         }
         
+        // ========== СОХРАНЕНИЕ ИМЕНИ ==========
+        nameInput.addEventListener('change', () => {
+            const newName = nameInput.value.trim();
+            if (newName && isNameUnique(newName)) {
+                playerName = newName;
+                localStorage.setItem('memoryPlayerName', playerName);
+            } else if (!isNameUnique(newName)) {
+                alert('Это имя уже использовано! Выберите другое.');
+                nameInput.value = playerName;
+            }
+        });
+        
+        // ========== НОВАЯ ИГРА ==========
+        startNewGameBtn.addEventListener('click', async () => {
+            const newName = nameInput.value.trim();
+            
+            if (!newName) {
+                alert('Пожалуйста, введите имя');
+                return;
+            }
+            
+            if (!isNameUnique(newName)) {
+                alert('Это имя уже использовано! Выберите другое.');
+                nameInput.value = playerName;
+                return;
+            }
+            
+            playerName = newName;
+            localStorage.setItem('memoryPlayerName', playerName);
+            
+            const victoryMsg = document.querySelector('.victory-message');
+            if (victoryMsg) victoryMsg.remove();
+            
+            initGame();
+        });
+        
         // ========== ЗАПУСК ==========
-        window.addEventListener('load', () => {
-            loadLeaderboard();
+        window.addEventListener('load', async () => {
+            await loadExistingNames();
+            await loadLeaderboard();
+            showWelcomeModal();
+            
+            // Не инициируем игру сразу, только после модального окна
         });
     </script>
 </body>
